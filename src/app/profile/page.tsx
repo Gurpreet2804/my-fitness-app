@@ -25,7 +25,7 @@ export default function ProfilePage() {
       setUser(authUser)
 
       // check if profile already exists
-      const { data: profile, error } = await supabase
+      const { data: profile } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', authUser.id)

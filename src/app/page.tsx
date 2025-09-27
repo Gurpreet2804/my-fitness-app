@@ -2,11 +2,12 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
+import { User } from '@supabase/supabase-js'
 
 export default function Page() {
   // ---------------- STATE ----------------
   const router = useRouter()
-  const [user, setUser] = useState<any>(null)       // stores the logged-in user
+  const [user, setUser] = useState<User | null>(null)       // stores the logged-in user
   const [email, setEmail] = useState('')            // email input value
   const [password, setPassword] = useState('')      // password input value
   const [message, setMessage] = useState('')        // status message for feedback
