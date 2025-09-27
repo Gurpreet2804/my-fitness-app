@@ -1,103 +1,156 @@
-import Image from "next/image";
+'use client' // tells Next.js this file runs in the browser
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabaseClient'
 
-export default function Home() {
+export default function Page() {
+  // ---------------- STATE ----------------
+  const router = useRouter()
+  const [user, setUser] = useState<any>(null)       // stores the logged-in user
+  const [email, setEmail] = useState('')            // email input value
+  const [password, setPassword] = useState('')      // password input value
+  const [message, setMessage] = useState('')        // status message for feedback
+  const [loading, setLoading] = useState(false)
+
+  // ---------------- EFFECT ----------------
+  // runs when the page first loads to check if a user is already logged in
+  useEffect(() => {
+    const getUser = async () => {
+      const { data, error } = await supabase.auth.getSession()
+      if (error) console.error(error)
+      setUser(data.session?.user ?? null)
+      if (data.session?.user) {
+        router.push('/dashboard')
+      }
+    }
+    getUser()
+  }, [router])
+
+  // ---------------- HANDLERS ----------------
+  // Signup new user with email + password
+  const handleSignup = async () => {
+    setLoading(true)
+    const { error } = await supabase.auth.signUp({ email, password })
+    if (error) setMessage(error.message)
+    else setMessage('✅ Check your email for a confirmation link!')
+    setLoading(false)
+  }
+
+  // Login existing user
+  const handleLogin = async () => {
+    setLoading(true)
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) setMessage(error.message)
+    else {
+      setMessage('✅ Logged in!')
+      window.location.href = '/dashboard'
+    }
+    setLoading(false)
+  }
+
+  const handleForgotPassword = async () => {
+    setLoading(true)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/profile/edit`,
+    })
+    if (error) setMessage(error.message)
+    else setMessage('📧 Password reset email sent.')
+    setLoading(false)
+  }
+
+  const handleLoginWithGoogle = async () => {
+    setLoading(true)
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/dashboard` },
+    })
+    if (error) {
+      setMessage(error.message)
+      setLoading(false)
+    }
+  }
+
+  // Logout current user
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    setUser(null)
+  }
+
+  // ---------------- RENDER ----------------
+  // If user is logged in → show welcome + logout button
+  if (user) {
+    return (
+      <div className="p-6 max-w-md mx-auto">
+        <h1 className="text-xl font-bold mb-4">Welcome, {user.email}</h1>
+        <button
+          onClick={handleLogout}
+          className="bg-red-500 text-white px-4 py-2 rounded"
+        >
+          Logout
+        </button>
+      </div>
+    )
+  }
+
+  // Otherwise → show signup/login form
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="p-6 max-w-md mx-auto">
+      <h1 className="text-xl font-bold mb-4">Sign Up / Login</h1>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+      {/* Email input */}
+      <input
+        type="email"
+        placeholder="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        className="border p-2 mb-2 w-full rounded"
+      />
+
+      {/* Password input */}
+      <input
+        type="password"
+        placeholder="Password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        className="border p-2 mb-2 w-full rounded"
+      />
+
+      {/* Buttons */}
+      <div className="flex gap-2">
+        <button
+          onClick={handleSignup}
+          className="bg-blue-500 text-white px-4 py-2 rounded w-full"
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+          {loading ? 'Working…' : 'Sign Up'}
+        </button>
+        <button
+          onClick={handleLogin}
+          className="bg-green-500 text-white px-4 py-2 rounded w-full"
         >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+          {loading ? 'Working…' : 'Login'}
+        </button>
+      </div>
+
+      <button
+        onClick={handleForgotPassword}
+        className="mt-2 underline text-sm"
+        disabled={loading || !email}
+      >
+        Forgot password?
+      </button>
+
+      <div className="mt-4">
+        <button
+          onClick={handleLoginWithGoogle}
+          className="bg-red-500 text-white px-4 py-2 rounded w-full"
+          disabled={loading}
         >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+          Continue with Google
+        </button>
+      </div>
+
+      {/* Status message */}
+      {message && <p className="mt-3 text-sm">{message}</p>}
     </div>
-  );
+  )
 }
